@@ -23,23 +23,42 @@ fn input_parser(input: String) -> u16 {
 
     result
 }
+fn most_significant_bit(input: &Vec<u16>, position: usize) -> u16 {
+    let mut counter = 0;
+    for i in input {
+        counter += read_bit(*i, position) as usize;
+    }
+    dbg!(counter);
+    if counter >= (input.len() / 2) {
+        return 1;
+    }
+    0
+}
 
-fn gamma(input: Vec<u16>) -> u16 {
-    let mut gamma: u16 = 0;
-    let mut bit_counter = [0usize; 12];
-    for i in &input {
-        for bit_pos in 0..12 {
-            if read_bit(*i, bit_pos) == 1 {
-                bit_counter[bit_pos] += 1;
-            }
-        }
+fn least_significant_bit(input: &Vec<u16>, position: usize) -> u16 {
+    if most_significant_bit(input, position) == 1 {
+        0
+    } else {
+        1
     }
-    for (pos, count) in bit_counter.iter().enumerate() {
-        if *count > (input.len() / 2) {
-            gamma = set_bit(gamma, pos)
-        }
+}
+
+fn filter_bits_until_last<P>(input: Vec<u16>, position: i32, bit_predicate: P) -> u16
+where
+    P: Fn(&Vec<u16>, usize) -> u16,
+{
+    if input.len() == 1 || position == 1 {
+        return input[0];
     }
-    gamma
+    let predicate = bit_predicate(&input, position as usize);
+    filter_bits_until_last(
+        input
+            .into_iter()
+            .filter(|value| read_bit(*value, position as usize) == predicate)
+            .collect(),
+        position - 1,
+        bit_predicate,
+    )
 }
 
 fn read_bytes(f: File) -> Vec<u16> {
@@ -54,9 +73,11 @@ fn print_bits(value: u16) {
 
 fn main() {
     let bytes = read_bytes(File::open("input.txt").unwrap());
-    let gamma = gamma(bytes);
-    let epsilon = (!gamma) << 16 - 12 >> 16 - 12; //quick and dirty way to fill max 4 bits with zeros
-    println!("result = {}", gamma as i32 * epsilon as i32);
+    let first = filter_bits_until_last(bytes.clone(), 11, most_significant_bit);
+    let second = filter_bits_until_last(bytes, 11, least_significant_bit);
+    print_bits(first);
+    print_bits(second);
+    println!("{}", first as i32 * second as i32);
 }
 #[cfg(test)]
 mod tests {
