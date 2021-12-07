@@ -7,6 +7,10 @@ fn read_lines(f: File) -> Lines<BufReader<File>> {
     BufReader::new(f).lines()
 }
 
+fn minmax(start: i32, end: i32) -> (i32, i32) {
+    (min(start, end), max(start, end))
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct Point {
     x: i32,
@@ -18,20 +22,36 @@ struct Line {
     end: Point,
 }
 
+fn step_to(start: i32, finish: i32) -> i32 {
+    if start > finish {
+        return start - 1;
+    }
+    start + 1
+}
+
 impl Line {
     fn points_on_line(&self) -> Vec<Point> {
         if self.start.y == self.end.y {
-            let start = min(self.start.x, self.end.x);
-            let end = max(self.start.x, self.end.x);
+            let (start, end) = minmax(self.start.x, self.end.x);
             (start..=end)
                 .map(|x| Point { x, y: self.start.y })
                 .collect()
-        } else {
-            let start = min(self.start.y, self.end.y);
-            let end = max(self.start.y, self.end.y);
+        } else if self.start.x == self.end.x {
+            let (start, end) = minmax(self.start.y, self.end.y);
             (start..=end)
                 .map(|y| Point { x: self.start.x, y })
                 .collect()
+        } else {
+            let mut x = self.start.x;
+            let mut y = self.start.y;
+            let mut result: Vec<Point> = Vec::new();
+            while x != self.end.x {
+                result.push(Point { x, y });
+                x = step_to(x, self.end.x);
+                y = step_to(y, self.end.y);
+            }
+            result.push(Point { x, y });
+            result
         }
     }
 }
@@ -65,19 +85,15 @@ fn parse_input(input: Vec<(Point, Point)>) -> Vec<Line> {
         .collect()
 }
 
-fn is_straight(line: &Line) -> bool {
-    line.start.x == line.end.x || line.start.y == line.end.y
-}
-
 fn main() {
-    let lines: Vec<Line> = parse_input(get_input())
-        .into_iter()
-        .filter(|line| is_straight(line))
-        .collect();
+    let lines: Vec<Line> = parse_input(get_input());
     let mut all_points: HashMap<Point, u32> = HashMap::new();
+
+    dbg!(lines.len());
 
     for line in lines {
         let points = line.points_on_line();
+        //        dbg!(points.len());
         for point in points {
             all_points
                 .entry(point)
@@ -86,6 +102,11 @@ fn main() {
         }
     }
     dbg!(all_points.len());
+    dbg!(Line {
+        start: Point { x: 3, y: 1 },
+        end: Point { x: 1, y: 3 }
+    }
+    .points_on_line());
     println!(
         "{}",
         all_points.values().filter(|value| **value >= 2).count()
